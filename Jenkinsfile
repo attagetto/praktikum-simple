@@ -10,25 +10,19 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo 'Melakukan checkout dari SCM...'
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Mulai build aplikasi'
-                bat 'echo Build selesai'
+                bat 'echo "Build di Windows"'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo 'Membangun Docker image...'
-                bat '''
-                    docker version
-                    docker build -t "%IMAGE_NAME%:%BUILD_NUMBER%" -t "%IMAGE_NAME%:latest" .
-                '''
+                bat 'docker build -t %IMAGE_NAME%:%BUILD_NUMBER% .'
             }
         }
 
@@ -36,24 +30,15 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKERHUB_USERNAME',
-                        passwordVariable: 'DOCKERHUB_PASSWORD'
+                        credentialsId: REGISTRY_CREDENTIALS,
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS'
                     )
                 ]) {
-                    bat '''
-                        @echo off
-                        echo %DOCKERHUB_PASSWORD% | docker login -u %DOCKERHUB_USERNAME% --password-stdin
-                        if errorlevel 1 exit /b 1
-
-                        docker push "%IMAGE_NAME%:%BUILD_NUMBER%"
-                        if errorlevel 1 exit /b 1
-
-                        docker push "%IMAGE_NAME%:latest"
-                        if errorlevel 1 exit /b 1
-
-                        docker logout
-                    '''
+                    bat 'docker login -u %USER% -p %PASS%'
+                    bat 'docker push %IMAGE_NAME%:%BUILD_NUMBER%'
+                    bat 'docker tag %IMAGE_NAME%:%BUILD_NUMBER% %IMAGE_NAME%:latest'
+                    bat 'docker push %IMAGE_NAME%:latest'
                 }
             }
         }
